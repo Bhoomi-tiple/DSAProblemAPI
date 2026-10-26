@@ -1,37 +1,78 @@
 
-const mongoose = require("mongoose");
+const pool = require("../db");
 
-const problemSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true,
-        trim: true
+const Problem = {
+    async create(data) {
+        const query = `
+            INSERT INTO problems
+            (title, platform, topic, difficulty, "problemLink", solution)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+        `;
+
+        const values = [
+            data.title,
+            data.platform,
+            data.topic,
+            data.difficulty,
+            data.problemLink || "",
+            data.solution || ""
+        ];
+
+        const result = await pool.query(query, values);
+        return result.rows[0];
     },
-    platform: {
-        type: String,
-        required: true,
-        trim: true
+
+    async find() {
+        const result = await pool.query(
+            "SELECT * FROM problems ORDER BY id ASC"
+        );
+        return result.rows;
     },
-    topic: {
-        type: String,
-        required: true,
-        trim: true
+
+    async findById(id) {
+        const result = await pool.query(
+            "SELECT * FROM problems WHERE id = $1",
+            [id]
+        );
+        return result.rows[0] || null;
     },
-    difficulty: {
-        type: String,
-        enum: ["Easy", "Medium", "Hard"],
-        required: true
+
+    async findByIdAndUpdate(id, data) {
+        const query = `
+            UPDATE problems
+            SET title = $1,
+                platform = $2,
+                topic = $3,
+                difficulty = $4,
+                "problemLink" = $5,
+                solution = $6,
+                "updatedAt" = CURRENT_TIMESTAMP
+            WHERE id = $7
+            RETURNING *
+        `;
+
+        const values = [
+            data.title,
+            data.platform,
+            data.topic,
+            data.difficulty,
+            data.problemLink || "",
+            data.solution || "",
+            id
+        ];
+
+        const result = await pool.query(query, values);
+        return result.rows[0] || null;
     },
-    problemLink: {
-        type: String,
-        trim: true
-    },
-    solution: {
-        type: String,
-        default: ""
+
+    async findByIdAndDelete(id) {
+        const result = await pool.query(
+            "DELETE FROM problems WHERE id = $1 RETURNING *",
+            [id]
+        );
+        return result.rows[0] || null;
     }
-}, {
-    timestamps: true
-});
+};
 
-module.exports = mongoose.model("Problem", problemSchema);
+module.exports = Problem;
